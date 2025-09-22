@@ -168,3 +168,16 @@ if IS_BACK4APP:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
+
+
+# === SOLUÇÃO TEMPORÁRIA PARA CSRF ===
+# REMOVER APÓS RESOLVER O PROBLEMA
+CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
+
+# Para debug - apenas temporário
+if IS_BACK4APP:
+    CSRF_COOKIE_DOMAIN = None
+    CSRF_TRUSTED_ORIGINS.extend([
+        "https://*.back4app.io",
+        "http://*.back4app.io",
+    ])
