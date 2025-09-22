@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,12 +26,45 @@ SECRET_KEY = "django-insecure-1yn%c*ft^c1_g=#9s50@g80f_u!&00#62c9k4v4roqfht)x=yu
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+# === CONFIGURAÇÕES PARA BACK4APP ===
+# Detectar se está rodando no Back4App
+IS_BACK4APP = os.environ.get('BACK4APP_SUBDOMAIN_NAME') is not None
+
+if IS_BACK4APP:
+    # Configurações para produção no Back4App
+    DEBUG = False
+    BACK4APP_SUBDOMAIN = os.environ.get('BACK4APP_SUBDOMAIN_NAME')
+    
+    ALLOWED_HOSTS = [
+        f"{BACK4APP_SUBDOMAIN}.back4app.io",
+        "*.back4app.io",
+    ]
+    
+    # CSRF configurações para Back4App
+    CSRF_TRUSTED_ORIGINS = [
+        f"https://{BACK4APP_SUBDOMAIN}.back4app.io",
+    ]
+    
+    # Configurações de segurança para produção
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    
+else:
+    # Configurações para desenvolvimento local
+    ALLOWED_HOSTS = ["*"]
+    
+    CSRF_TRUSTED_ORIGINS = [
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
+    
+    # Configurações de segurança para desenvolvimento
+    CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_SECURE = False
 
 
 # Application definition
-
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -123,3 +157,14 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# === CONFIGURAÇÕES CSRF ADICIONAIS ===
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_USE_SESSIONS = False
+
+# Configurações adicionais de segurança para Back4App
+if IS_BACK4APP:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
