@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Nexus App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --nexus-black: #1a1a1a;
+            --nexus-white: #ffffff;
+            --nexus-yellow: #ffd700;
+            --nexus-yellow-dark: #e6c200;
+            --nexus-gray: #f8f9fa;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--nexus-black) 0%, #2d2d2d 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+
+        .login-card {
+            background: var(--nexus-white);
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, var(--nexus-black) 0%, #2d2d2d 100%);
+            color: var(--nexus-white);
+            padding: 2rem;
+            text-align: center;
+            border-bottom: 4px solid var(--nexus-yellow);
+        }
+
+        .login-header i {
+            color: var(--nexus-yellow);
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .login-header h1 {
+            font-weight: bold;
+            font-size: 2.5rem;
+            margin: 0;
+            letter-spacing: 2px;
+        }
+
+        .login-body {
+            padding: 2rem;
+        }
+
+        .btn-nexus {
+            background-color: var(--nexus-yellow);
+            border-color: var(--nexus-yellow);
+            color: var(--nexus-black);
+            font-weight: 600;
+            padding: 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-nexus:hover {
+            background-color: var(--nexus-yellow-dark);
+            border-color: var(--nexus-yellow-dark);
+            color: var(--nexus-black);
+            transform: translateY(-2px);
+        }
+
+        .btn-nexus-outline {
+            border-color: var(--nexus-yellow);
+            color: var(--nexus-yellow);
+            font-weight: 600;
+            padding: 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-nexus-outline:hover {
+            background-color: var(--nexus-yellow);
+            border-color: var(--nexus-yellow);
+            color: var(--nexus-black);
+            transform: translateY(-2px);
+        }
+
+        .form-control {
+            border-radius: 8px;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--nexus-yellow);
+            box-shadow: 0 0 0 0.2rem rgba(255, 215, 0, 0.25);
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--nexus-black);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="card login-card">
+                    <div class="login-header">
+                        <i class="fas fa-cube"></i>
+                        <h1>NEXUS</h1>
+                        <p class="mb-0">Sistema de Gerenciamento</p>
+                    </div>
+                    
+                    <div class="login-body">
+                        {% if messages %}
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="username" class="form-label">
+                                    <i class="fas fa-user me-2"></i>Usuário
+                                </label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            <div class="mb-4">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-lock me-2"></i>Senha
+                                </label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <button type="submit" class="btn btn-nexus w-100 mb-3">
+                                <i class="fas fa-sign-in-alt me-2"></i>ENTRAR
+                            </button>
+                        </form>
+
+                        <div class="text-center">
+                            <p class="mb-2">Não possui uma conta?</p>
+                            <a href="{% url 'register' %}" class="btn btn-nexus-outline">
+                                <i class="fas fa-user-plus me-2"></i>CRIAR CONTA
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

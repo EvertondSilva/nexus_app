@@ -1,0 +1,2597 @@
+{% extends 'produtos/base.html' %}
+{% load projeto_filters %}
+
+{% block title %}Dashboard - Nexus App{% endblock %}
+
+{% block content %}
+<!-- Header com estatísticas -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h1 style="color: #ebebebff;"><i class="fas fa-tachometer-alt me-2"></i>Dashboard de Projetos</h1>
+    </div>
+    <div class="col-md-6 text-end">
+        <button class="btn btn-nexus me-2" data-bs-toggle="modal" data-bs-target="#modalNovoProduto">
+            <i class="fas fa-plus me-1"></i>Novo Produto
+        </button>
+        <button class="btn btn-nexus me-2" data-bs-toggle="modal" data-bs-target="#modalNovoStatus">
+            <i class="fas fa-plus me-1"></i>Novo Status
+        </button>
+        <button class="btn btn-nexus" data-bs-toggle="modal" data-bs-target="#modalNovoProjeto">
+            <i class="fas fa-project-diagram me-1"></i>Novo Projeto
+        </button>
+    </div>
+</div>
+<!-- Filtro de Datas para Métricas -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body py-3">
+                <div class="row align-items-center">
+                    <div class="col-md-3">
+                        <h6 class="mb-0">
+                            <i class="fas fa-filter me-2"></i>
+                            Filtrar Métricas por Período
+                        </h6>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="dataInicio" class="form-label small mb-1">Data Início</label>
+                        <input type="date" class="form-control form-control-sm" id="dataInicio" name="data_inicio">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="dataFim" class="form-label small mb-1">Data Fim</label>
+                        <input type="date" class="form-control form-control-sm" id="dataFim" name="data_fim">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small mb-1">&nbsp;</label>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="aplicarFiltroMetricas()">
+                                <i class="fas fa-search me-1"></i>Filtrar
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limparFiltroMetricas()">
+                                <i class="fas fa-times me-1"></i>Limpar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Indicador de filtro ativo -->
+                <div id="indicadorFiltro" class="mt-2" style="display: none;">
+                    <div class="alert alert-info py-2 mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="textoFiltro">Filtro ativo</span>
+                        <button type="button" class="btn-close btn-sm ms-2" onclick="limparFiltroMetricas()"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Métricas Dashboard (com IDs para atualização) -->
+<div class="row mb-4" id="metricas-dashboard">
+    <!-- 1. Projetos por Status -->
+    <div class="col-md-2 mb-3">
+        <div class="card text-white position-relative" style="background: linear-gradient(135deg, #007bff, #0056b3);">
+            <div class="dropdown position-absolute" style="top: 10px; right: 10px; z-index: 100;">
+                <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" id="dropdown-status-metricas">
+                    {% for status in status_metricas %}
+                    <li>
+                        <a class="dropdown-item" href="#" onclick="alterarStatusMetrica({{ status.id }}, '{{ status.nome }}', '{{ status.cor }}', {{ status.count }})">
+                            <span class="badge me-2" style="background-color: {{ status.cor }};">&nbsp;</span>
+                            {{ status.nome }} 
+                            <span class="badge bg-secondary ms-1">{{ status.count }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="card-body d-flex flex-column justify-content-center text-center">
+                <i class="fas fa-tasks fa-2x mb-2 opacity-75"></i>
+                <h4 id="metricaStatusCount">{{ projetos_primeiro_status }}</h4>
+                <p class="mb-0" id="metricaStatusNome">
+                    {% if primeiro_status %}
+                        {{ primeiro_status.nome }}
+                    {% else %}
+                        Nenhum Status
+                    {% endif %}
+                </p>
+                <small class="opacity-75">Projetos neste status</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 2. Projetos em Atraso -->
+    <div class="col-md-2 mb-3">
+        <div class="card text-white" style="background: linear-gradient(135deg, #dc3545, #a71e2a);">
+            <div class="card-body d-flex flex-column justify-content-center text-center">
+                <i class="fas fa-exclamation-triangle fa-2x mb-2 opacity-75"></i>
+                <h4 id="metrica-atraso">{{ projetos_em_atraso }}</h4>
+                <p class="mb-0">Em Atraso</p>
+                <small class="opacity-75">Prazo vencido</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 3. Projetos desta Semana -->
+    <div class="col-md-2 mb-3">
+        <div class="card text-white" style="background: linear-gradient(135deg, #ffc107, #d39e00);">
+            <div class="card-body d-flex flex-column justify-content-center text-center">
+                <i class="fas fa-calendar-week fa-2x mb-2 opacity-75"></i>
+                <h4 id="metrica-semana">{{ projetos_semana }}</h4>
+                <p class="mb-0">Esta Semana</p>
+                <small class="opacity-75" id="periodo-semana">{{ inicio_semana|date:"d/m" }} a {{ fim_semana|date:"d/m" }}</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 4. Orçamentos Aceitos -->
+    <div class="col-md-2 mb-3">
+        <div class="card text-white" style="background: linear-gradient(135deg, #28a745, #1e7e34);">
+            <div class="card-body d-flex flex-column justify-content-center text-center">
+                <i class="fas fa-thumbs-up fa-2x mb-2 opacity-75"></i>
+                <h4 id="metrica-aceitos">{{ orcamentos_aceitos }}</h4>
+                <p class="mb-0">Aceitos</p>
+                <small class="opacity-75">Orçamentos aprovados</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 5. Orçamentos Rejeitados -->
+    <div class="col-md-2 mb-3">
+        <div class="card text-white" style="background: linear-gradient(135deg, #6f42c1, #563d7c);">
+            <div class="card-body d-flex flex-column justify-content-center text-center">
+                <i class="fas fa-thumbs-down fa-2x mb-2 opacity-75"></i>
+                <h4 id="metrica-rejeitados">{{ orcamentos_rejeitados }}</h4>
+                <p class="mb-0">Rejeitados</p>
+                <small class="opacity-75">Orçamentos recusados</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 6. Projetos Concluídos -->
+    <div class="col-md-2 mb-3">
+        <div class="card text-white" style="background: linear-gradient(135deg, #17a2b8, #117a8b);">
+            <div class="card-body d-flex flex-column justify-content-center text-center">
+                <i class="fas fa-check-circle fa-2x mb-2 opacity-75"></i>
+                <h4 id="metrica-concluidos">{{ numero_concluidos }}</h4>
+                <p class="mb-0">Concluídos</p>
+                <small class="opacity-75">Total finalizado</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kanban Board -->
+<div class="row kanban-board">
+    {% for status in status_list %}
+    <div class="col-md-3 kanban-column">
+        <div class="kanban-header text-white text-center" style="background-color: {{ status.cor }};">
+            <h6 class="mb-0">
+                <i class="fas fa-circle me-2"></i>{{ status.nome }}
+                <span class="badge bg-light text-dark ms-2">
+                    {{ projetos_por_status|get_item:status.id|length }}
+                </span>
+            </h6>
+        </div>
+        <div class="kanban-content" data-status-id="{{ status.id }}">
+            {% for projeto in projetos_por_status|get_item:status.id %}
+            <div class="projeto-card mb-2" draggable="true" data-projeto-id="{{ projeto.id }}">
+                <div class="card shadow-sm">
+                    <!-- Flag de Aprovação -->
+                    <div class="position-absolute" style="top: 8px; left: 8px; z-index: 10;">
+                        {% if projeto.aprovacao == 'pendente' %}
+                        <span class="badge bg-warning text-dark" title="Aguardando aprovação" style="font-size: 0.7rem;">
+                            <i class="fas fa-clock me-1"></i>Pendente
+                        </span>
+                        {% elif projeto.aprovacao == 'aprovado' %}
+                        <span class="badge bg-success" title="Projeto aprovado" style="font-size: 0.7rem;">
+                            <i class="fas fa-check me-1"></i>Aprovado
+                        </span>
+                        {% elif projeto.aprovacao == 'rejeitado' %}
+                        <span class="badge bg-danger" title="Projeto rejeitado" style="font-size: 0.7rem;">
+                            <i class="fas fa-times me-1"></i>Rejeitado
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="card-body p-3" style="padding-top: 2.2rem !important;">
+                        <h6 class="card-title mb-2 text-truncate">
+                            <i class="fas fa-project-diagram me-1 text-nexus"></i>
+                            {{ projeto.nome }}
+                        </h6>
+                        <p class="card-text small mb-2">
+                            <i class="fas fa-user me-1"></i>{{ projeto.cliente }}
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i>
+                                {{ projeto.data_prazo_entrega|date:"d/m/Y" }}
+                            </small>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="editarProjeto({{ projeto.id }})">
+                                        <i class="fas fa-edit me-1"></i>Editar
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="verDetalhes({{ projeto.id }})">
+                                        <i class="fas fa-eye me-1"></i>Detalhes
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    
+                                    <!-- Opções de Aprovação -->
+                                    {% if projeto.aprovacao == 'pendente' %}
+                                    <li><a class="dropdown-item text-success" href="#" onclick="aprovarProjeto({{ projeto.id }})">
+                                        <i class="fas fa-check me-1"></i>Aprovar
+                                    </a></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="rejeitarProjeto({{ projeto.id }})">
+                                        <i class="fas fa-times me-1"></i>Rejeitar
+                                    </a></li>
+                                    {% elif projeto.aprovacao == 'aprovado' %}
+                                    <li><a class="dropdown-item text-warning" href="#" onclick="reabrirProjetoRejeitado({{ projeto.id }})">
+                                        <i class="fas fa-undo me-1"></i>Resetar Aprovação
+                                    </a></li>
+                                    {% elif projeto.aprovacao == 'rejeitado' %}
+                                    <li><a class="dropdown-item text-success" href="#" onclick="aprovarProjeto({{ projeto.id }})">
+                                        <i class="fas fa-check me-1"></i>Aprovar
+                                    </a></li>
+                                    <li><a class="dropdown-item text-warning" href="#" onclick="reabrirProjetoRejeitado({{ projeto.id }})">
+                                        <i class="fas fa-undo me-1"></i>Resetar Aprovação
+                                    </a></li>
+                                    {% endif %}
+                                    
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-success" href="#" onclick="concluirProjeto({{ projeto.id }})">
+                                        <i class="fas fa-check-circle me-1"></i>Marcar como Concluído
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="excluirProjeto({{ projeto.id }})">
+                                        <i class="fas fa-trash me-1"></i>Excluir
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        {% if projeto.materiais.exists %}
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-box me-1"></i>
+                                {{ projeto.materiais.count }} material{{ projeto.materiais.count|pluralize:"is" }}
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-inbox fa-2x mb-2"></i>
+                <p class="small">Nenhum projeto neste status</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal Novo Status -->
+<div class="modal fade" id="modalNovoStatus" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header card-header-nexus">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>Novo Status
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNovoStatus">
+                    <div class="mb-3">
+                        <label class="form-label">Nome do Status</label>
+                        <input type="text" class="form-control" id="nomeStatus" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cor</label>
+                        <input type="color" class="form-control" id="corStatus" value="#6c757d">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-nexus" onclick="criarStatus()">Criar Status</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Novo Projeto -->
+<div class="modal fade" id="modalNovoProjeto" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header card-header-nexus">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>Novo Projeto
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNovoProjeto">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Nome do Projeto *</label>
+                                <input type="text" class="form-control" id="novoNomeProjeto" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Cliente *</label>
+                                <input type="text" class="form-control" id="novoClienteProjeto" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Prazo Entrega *</label>
+                                <input type="date" class="form-control" id="novoPrazoEntrega" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Data de Inicio *</label>
+                                <input type="date" class="form-control" id="novoPrazoPagamento" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status *</label>
+                        <select class="form-control" id="novoStatusProjeto" required>
+                            <option value="">Selecione um status</option>
+                            {% for status in status_list %}
+                            <option value="{{ status.id }}">{{ status.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observações</label>
+                        <textarea class="form-control" id="novoObservacoesProjeto" rows="3" placeholder="Observações sobre o projeto..."></textarea>
+                    </div>
+                    
+                    <!-- Seção de Materiais -->
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0"><i class="fas fa-box me-2"></i>Materiais (Opcional)</h6>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="adicionarNovoMaterial()">
+                            <i class="fas fa-plus me-1"></i>Adicionar Material
+                        </button>
+                    </div>
+                    <div id="novoMateriaisProjeto">
+                        <div class="row material-item mb-2">
+                            <div class="col-md-8">
+                                <select class="form-control" name="produto">
+                                    <option value="">Selecione um produto</option>
+                                    {% for produto in produtos %}
+                                    <option value="{{ produto.id }}">{{ produto.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control" name="quantidade" placeholder="Qtd" min="1">
+                            </div>
+                            <div class="col-md-1">
+                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removerNovoMaterial(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-nexus" onclick="salvarNovoProjeto()">
+                    <i class="fas fa-save me-1"></i>Criar Projeto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Novo Produto -->
+<div class="modal fade" id="modalNovoProduto" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header card-header-nexus">
+                <h5 class="modal-title">
+                    <i class="fas fa-box me-2"></i>Novo Produto
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNovoProduto">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label class="form-label">Nome do Produto *</label>
+                                <input type="text" class="form-control" id="nomeProduto" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Código/SKU</label>
+                                <input type="text" class="form-control" id="codigoProduto">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descrição</label>
+                        <textarea class="form-control" id="descricaoProduto" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Categoria</label>
+                                <select class="form-control" id="categoriaProduto">
+                                    <option value="">Selecione uma categoria</option>
+                                    {% for categoria in categorias %}
+                                    <option value="{{ categoria.id }}">{{ categoria.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted">
+                                    <a href="#" onclick="mostrarFormCategoria()">+ Criar nova categoria</a>
+                                </small>
+                            </div>
+                        </div>
+                        <!-- CAMPO PREÇO REMOVIDO -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Estoque Inicial</label>
+                                <input type="number" class="form-control" id="estoqueProduto" value="0" min="0">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Formulário de nova categoria (mantido igual) -->
+                    <div id="formNovaCategoria" style="display: none;">
+                        <hr>
+                        <h6><i class="fas fa-tags me-2"></i>Nova Categoria</h6>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label class="form-label">Nome da Categoria</label>
+                                    <input type="text" class="form-control" id="nomeCategoria">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Cor</label>
+                                    <input type="color" class="form-control" id="corCategoria" value="#007bff">
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-success" onclick="criarCategoria()">
+                            <i class="fas fa-save me-1"></i>Criar Categoria
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="ocultarFormCategoria()">
+                            Cancelar
+                        </button>
+                        <hr>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Estoque Mínimo</label>
+                                <input type="number" class="form-control" id="estoqueMinimo" value="5" min="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Unidade de Medida</label>
+                                <select class="form-control" id="unidadeProduto">
+                                    <option value="UN">Unidade</option>
+                                    <option value="KG">Quilograma</option>
+                                    <option value="M">Metro</option>
+                                    <option value="L">Litro</option>
+                                    <option value="CX">Caixa</option>
+                                    <option value="PC">Peça</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observações</label>
+                        <textarea class="form-control" id="observacoesProduto" rows="2"></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="ativoProduto" checked>
+                        <label class="form-check-label" for="ativoProduto">
+                            Produto ativo
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-nexus" onclick="criarProduto()">
+                    <i class="fas fa-save me-1"></i>Criar Produto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Editar Projeto -->
+<div class="modal fade" id="modalEditarProjeto" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header card-header-nexus">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>Editar Projeto
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarProjeto">
+                    <input type="hidden" id="editProjetoId">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Nome do Projeto *</label>
+                                <input type="text" class="form-control" id="editNomeProjeto" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Cliente *</label>
+                                <input type="text" class="form-control" id="editClienteProjeto" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Prazo Entrega *</label>
+                                <input type="date" class="form-control" id="editPrazoEntrega" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Prazo Pagamento *</label>
+                                <input type="date" class="form-control" id="editPrazoPagamento" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status *</label>
+                        <select class="form-control" id="editStatusProjeto" required>
+                            <option value="">Selecione um status</option>
+                            {% for status in status_list %}
+                            <option value="{{ status.id }}">{{ status.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observações</label>
+                        <textarea class="form-control" id="editObservacoesProjeto" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-nexus" onclick="salvarEdicaoProjeto()">
+                    <i class="fas fa-save me-1"></i>Salvar Alterações
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalhes Projeto -->
+<div class="modal fade" id="modalDetalhesProjeto" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header card-header-nexus">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye me-2"></i>Detalhes do Projeto
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-project-diagram me-2"></i>Informações Gerais</h6>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Nome:</strong></td>
+                                <td id="detalhesNome">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cliente:</strong></td>
+                                <td id="detalhesCliente">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td id="detalhesStatus">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Criado em:</strong></td>
+                                <td id="detalhesDataCriacao">-</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-calendar me-2"></i>Prazos</h6>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Entrega:</strong></td>
+                                <td id="detalhesPrazoEntrega">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Pagamento:</strong></td>
+                                <td id="detalhesPrazoPagamento">-</td>
+                            </tr>
+                        </table>
+                        
+                        <h6><i class="fas fa-sticky-note me-2"></i>Observações</h6>
+                        <p id="detalhesObservacoes" class="text-muted">-</p>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6><i class="fas fa-box me-2"></i>Materiais</h6>
+                <ul class="list-group" id="detalhesMateriais">
+                    <li class="list-group-item text-muted">Carregando...</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Segunda linha de métricas (com IDs) -->
+<div class="row mb-4">
+    <!-- Card de comparação Aceitos vs Rejeitados -->
+    <div class="col-md-8 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    Aprovação de Orçamentos
+                </h6>
+            </div>
+            <div class="card-body" id="card-aprovacao-orcamentos">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <h3 class="text-success mb-2" id="card-aceitos">{{ orcamentos_aceitos }}</h3>
+                            <p class="text-muted mb-1">Aceitos</p>
+                            <span class="badge bg-success" id="percentual-aceitos">
+                                {% if orcamentos_aceitos > 0 or orcamentos_rejeitados > 0 %}
+                                    {% widthratio orcamentos_aceitos orcamentos_aceitos|add:orcamentos_rejeitados 100 %}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <h3 class="text-danger mb-2" id="card-rejeitados">{{ orcamentos_rejeitados }}</h3>
+                        <p class="text-muted mb-1">Rejeitados</p>
+                        <span class="badge bg-danger" id="percentual-rejeitados">
+                            {% if orcamentos_aceitos > 0 or orcamentos_rejeitados > 0 %}
+                                {% widthratio orcamentos_rejeitados orcamentos_aceitos|add:orcamentos_rejeitados 100 %}%
+                            {% else %}
+                                0%
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Barra de progresso -->
+                <div id="barra-progresso-container" class="mt-3">
+                    <!-- Será atualizada via JavaScript -->
+                </div>
+                
+                <div class="text-center mt-2">
+                    <small class="text-muted" id="total-orcamentos">
+                        Total: {{ orcamentos_aceitos|add:orcamentos_rejeitados }} orçamento{{ orcamentos_aceitos|add:orcamentos_rejeitados|pluralize }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Card de resumo geral -->
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Resumo Geral
+                </h6>
+            </div>
+            <div class="card-body d-flex flex-column justify-content-center">
+                <div class="text-center">
+                    <div class="mb-3">
+                        <h4 class="text-primary mb-1" id="resumo-ativos">{{ projetos.count }}</h4>
+                        <p class="text-muted mb-0 small">Projetos Ativos</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h4 class="text-success mb-1" id="resumo-finalizados">{{ numero_concluidos }}</h4>
+                        <p class="text-muted mb-0 small">Finalizados</p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <h4 class="text-warning mb-1" id="resumo-pendentes">{{ projetos_pendentes }}</h4>
+                        <p class="text-muted mb-0 small">Pendentes Aprovação</p>
+                    </div>
+                </div>
+                
+                <div class="mt-auto">
+                    <hr class="my-2">
+                    <div class="text-center" id="indicador-performance">
+                        {% if numero_concluidos > 0 %}
+                            <small class="text-success">
+                                <i class="fas fa-arrow-up me-1"></i>
+                                {{ numero_concluidos }} projeto{{ numero_concluidos|pluralize }} finalizado{{ numero_concluidos|pluralize }}
+                            </small>
+                        {% else %}
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Nenhum projeto finalizado
+                            </small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Seção Projetos Concluídos -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-check-circle me-2 text-success"></i>
+                    Projetos Concluídos ({{ projetos_concluidos }})
+                </h5>
+                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#projetosConcluidos">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="collapse" id="projetosConcluidos">
+                <div class="card-body">
+                    <div id="listaConcluidos">
+                        <p class="text-muted">Carregue os projetos concluídos clicando no botão abaixo.</p>
+                        <button class="btn btn-outline-nexus" onclick="carregarProjetosConcluidos()">
+                            <i class="fas fa-download me-1"></i>Carregar Projetos Concluídos
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Seção Projetos Rejeitados -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-danger">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #f8d7da;">
+                <h5 class="mb-0 text-danger">
+                    <i class="fas fa-times-circle me-2"></i>
+                    Projetos Rejeitados ({{ projetos_rejeitados|default:0 }})
+                </h5>
+                <button class="btn btn-outline-danger btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#projetosRejeitados">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="collapse" id="projetosRejeitados">
+                <div class="card-body">
+                    <div id="listaRejeitados">
+                        <p class="text-muted">Carregue os projetos rejeitados clicando no botão abaixo.</p>
+                        <button class="btn btn-outline-danger" onclick="carregarProjetosRejeitados()">
+                            <i class="fas fa-download me-1"></i>Carregar Projetos Rejeitados
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// (Seu JavaScript aqui, inalterado)
+// Variáveis globais
+let draggedElement = null;
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    inicializarDragAndDrop();
+    console.log('Sistema carregado!');
+});
+// Funções para produtos
+function mostrarFormCategoria() {
+    document.getElementById('formNovaCategoria').style.display = 'block';
+}
+
+function ocultarFormCategoria() {
+    document.getElementById('formNovaCategoria').style.display = 'none';
+    document.getElementById('nomeCategoria').value = '';
+}
+
+function criarCategoria() {
+    const nome = document.getElementById('nomeCategoria').value;
+    const cor = document.getElementById('corCategoria').value;
+
+    if (!nome.trim()) {
+        alert('Por favor, digite um nome para a categoria.');
+        return;
+    }
+fetch('/api/criar-categoria/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            nome: nome,
+            cor: cor
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Adicionar a nova categoria ao select
+            const select = document.getElementById('categoriaProduto');
+            const option = document.createElement('option');
+            option.value = data.categoria.id;
+            option.text = data.categoria.nome;
+            option.selected = true;
+            select.appendChild(option);
+            
+            // Ocultar formulário
+            ocultarFormCategoria();
+            alert('Categoria criada com sucesso!');
+        } else {
+            alert('Erro: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao criar categoria');
+    });
+}
+// Atualizar função criarProduto
+function criarProduto() {
+    console.log('Criando produto...');
+    
+    // Coletar dados do formulário
+    const nome = document.getElementById('nomeProduto').value;
+    const codigo = document.getElementById('codigoProduto').value;
+    const descricao = document.getElementById('descricaoProduto').value;
+    const categoria_id = document.getElementById('categoriaProduto').value;
+    // const preco = document.getElementById('precoProduto').value; // REMOVIDO
+    const estoque = document.getElementById('estoqueProduto').value;
+    const estoque_minimo = document.getElementById('estoqueMinimo').value;
+    const unidade = document.getElementById('unidadeProduto').value;
+    const observacoes = document.getElementById('observacoesProduto').value;
+    const ativo = document.getElementById('ativoProduto').checked;
+// Validar campos obrigatórios
+    if (!nome) { // Removido !preco
+        alert('Por favor, preencha todos os campos obrigatórios (*).');
+        return;
+    }
+// Enviar dados
+    fetch('/api/criar-produto/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            nome: nome,
+            codigo: codigo,
+            descricao: descricao,
+            categoria_id: categoria_id,
+            // preco: preco, // REMOVIDO
+            estoque: estoque,
+            estoque_minimo: estoque_minimo,
+            unidade: unidade,
+            observacoes: observacoes,
+            ativo: ativo
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Resposta:', data);
+        if (data.success) {
+            alert('Produto criado com sucesso!');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovoProduto'));
+            modal.hide();
+            document.getElementById('formNovoProduto').reset();
+            location.reload();
+        } else {
+            alert('Erro: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao criar produto');
+    });
+}
+// Atualizar função criarProjeto
+function criarProjeto() {
+    console.log('Criando projeto...');
+    
+    // Coletar dados do formulário
+    const nome = document.getElementById('nomeProjeto').value;
+    const cliente = document.getElementById('clienteProjeto').value;
+    // const valor_orcamento = document.getElementById('valorProjeto').value; // REMOVIDO
+    const data_prazo_entrega = document.getElementById('prazoEntrega').value;
+    const data_prazo_pagamento = document.getElementById('prazoPagamento').value;
+    const status_id = document.getElementById('statusProjeto').value;
+    const observacoes = document.getElementById('observacoesProjeto').value;
+
+    // Validar campos obrigatórios
+    if (!nome || !cliente || !data_prazo_entrega || !data_prazo_pagamento || !status_id) { // Removido !valor_orcamento
+        alert('Por favor, preencha todos os campos obrigatórios (*).');
+        return;
+    }
+// Coletar materiais
+    const materiais = [];
+    const materialItems = document.querySelectorAll('.material-item');
+    
+    materialItems.forEach(item => {
+        const produto_id = item.querySelector('select[name="produto"]').value;
+        const quantidade = item.querySelector('input[name="quantidade"]').value;
+        
+        if (produto_id && quantidade) {
+            materiais.push({
+                produto_id: produto_id,
+                quantidade: quantidade
+            });
+        }
+    });
+// Enviar dados
+    fetch('/api/criar-projeto/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            nome: nome,
+            cliente: cliente,
+            // valor_orcamento: valor_orcamento, // REMOVIDO
+            data_prazo_entrega: data_prazo_entrega,
+            data_prazo_pagamento: data_prazo_pagamento,
+            status_id: status_id,
+            observacoes: observacoes,
+            materiais: materiais
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Resposta:', data);
+        if (data.success) {
+            alert('Projeto criado com sucesso!');
+            location.reload();
+        } else {
+            alert('Erro: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao criar projeto');
+    });
+}
+// Drag and Drop
+function inicializarDragAndDrop() {
+    const projetoCards = document.querySelectorAll('.projeto-card');
+    const kanbanContents = document.querySelectorAll('.kanban-content');
+projetoCards.forEach(card => {
+        card.addEventListener('dragstart', function(e) {
+            draggedElement = this;
+            this.style.opacity = '0.5';
+        });
+
+        card.addEventListener('dragend', function(e) {
+            this.style.opacity = '1';
+            draggedElement = null;
+        });
+    });
+
+    kanbanContents.forEach(content => {
+        content.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.backgroundColor = 'rgba(255, 215, 0, 0.1)';
+        });
+
+        content.addEventListener('dragleave', function(e) {
+            this.style.backgroundColor = '';
+        });
+content.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.backgroundColor = '';
+            
+            if (draggedElement) {
+                const projetoId = draggedElement.getAttribute('data-projeto-id');
+                const novoStatusId = this.getAttribute('data-status-id');
+                
+                moverProjeto(projetoId, novoStatusId);
+            }
+        });
+    });
+}
+function formatarData(data) {
+    if (!data) return '-';
+    try {
+        const date = new Date(data);
+        if (isNaN(date.getTime())) return '-';
+        return date.toLocaleDateString('pt-BR');
+    } catch (error) {
+        console.error('Erro ao formatar data:', error);
+        return '-';
+    }
+}
+function formatarDataHora(dataHora) {
+    if (!dataHora) return '-';
+    try {
+        const date = new Date(dataHora);
+        if (isNaN(date.getTime())) return '-';
+        return date.toLocaleString('pt-BR');
+    } catch (error) {
+        console.error('Erro ao formatar data/hora:', error);
+        return '-';
+    }
+}
+// Função para pegar CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+// Funções de materiais
+function adicionarMaterial() {
+    const container = document.getElementById('materiaisProjeto');
+    const materialItem = document.querySelector('.material-item').cloneNode(true);
+    
+    // Limpar valores
+    materialItem.querySelector('select').value = '';
+    materialItem.querySelector('input').value = '';
+    
+    container.appendChild(materialItem);
+}
+
+function removerMaterial(button) {
+    const container = document.getElementById('materiaisProjeto');
+    if (container.children.length > 1) {
+        button.closest('.material-item').remove();
+    }
+}
+// Função para criar projeto
+function criarProjeto() {
+    console.log('Criando projeto...');
+    
+    // Coletar dados do formulário
+    const nome = document.getElementById('nomeProjeto').value;
+    const cliente = document.getElementById('clienteProjeto').value;
+    const valor_orcamento = document.getElementById('valorProjeto').value;
+    const data_prazo_entrega = document.getElementById('prazoEntrega').value;
+    const data_prazo_pagamento = document.getElementById('prazoPagamento').value;
+    const status_id = document.getElementById('statusProjeto').value;
+    const observacoes = document.getElementById('observacoesProjeto').value;
+
+    // Validar campos obrigatórios
+    if (!nome || !cliente || !valor_orcamento || !data_prazo_entrega || !data_prazo_pagamento || !status_id) {
+        alert('Por favor, preencha todos os campos obrigatórios (*).');
+        return;
+    }
+// Coletar materiais
+    const materiais = [];
+    const materialItems = document.querySelectorAll('.material-item');
+    
+    materialItems.forEach(item => {
+        const produto_id = item.querySelector('select[name="produto"]').value;
+        const quantidade = item.querySelector('input[name="quantidade"]').value;
+        
+        if (produto_id && quantidade) {
+            materiais.push({
+                produto_id: produto_id,
+                quantidade: quantidade
+            });
+        }
+    });
+
+    console.log('Dados coletados:', {
+        nome, cliente, valor_orcamento, status_id, materiais
+    });
+// Enviar dados
+    fetch('/api/criar-projeto/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            nome: nome,
+            cliente: cliente,
+            valor_orcamento: valor_orcamento,
+            data_prazo_entrega: data_prazo_entrega,
+            data_prazo_pagamento: data_prazo_pagamento,
+            status_id: status_id,
+            observacoes: observacoes,
+            materiais: materiais
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Resposta:', data);
+        if (data.success) {
+            alert('Projeto criado com sucesso!');
+            location.reload();
+        } else {
+            alert('Erro: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao criar projeto');
+    });
+}
+// Funções de API para Status
+function criarStatus() {
+    const nome = document.getElementById('nomeStatus').value;
+    const cor = document.getElementById('corStatus').value;
+
+    if (!nome.trim()) {
+        alert('Por favor, digite um nome para o status.');
+        return;
+    }
+
+    fetch('/api/criar-status/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            nome: nome,
+            cor: cor
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao criar status');
+    });
+}
+function moverProjeto(projetoId, novoStatusId) {
+    fetch('/api/mover-projeto/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            projeto_id: projetoId,
+            novo_status_id: novoStatusId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao mover projeto');
+    });
+}
+// Função para editar projeto
+function editarProjeto(projetoId) {
+    console.log('Editando projeto:', projetoId);
+    
+    fetch(`/api/projeto/${projetoId}/`)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Dados do projeto:', data);
+        if (data.success) {
+            preencherModalEdicao(data.projeto);
+            const modal = new bootstrap.Modal(document.getElementById('modalEditarProjeto'));
+            modal.show();
+        } else {
+            alert('Erro ao carregar projeto: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro na requisição:', error);
+        alert('Erro ao carregar projeto: ' + error.message);
+    });
+}
+// Função para ver detalhes
+function verDetalhes(projetoId) {
+    console.log('Visualizando projeto:', projetoId);
+    
+    // Verificar se o modal existe
+    const modalElement = document.getElementById('modalDetalhesProjeto');
+    if (!modalElement) {
+        alert('Erro: Modal de detalhes não encontrado!');
+        return;
+    }
+    
+    fetch(`/api/projeto/${projetoId}/`)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Detalhes do projeto:', data);
+        if (data.success) {
+            preencherModalDetalhes(data.projeto);
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        } else {
+            alert('Erro ao carregar projeto: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro na requisição:', error);
+        alert('Erro ao carregar projeto: ' + error.message);
+    });
+}
+// Função para excluir projeto
+function excluirProjeto(projetoId) {
+    if (confirm('Tem certeza que deseja excluir este projeto? Esta ação não pode ser desfeita.')) {
+        console.log('Excluindo projeto:', projetoId);
+        
+        fetch('/api/excluir-projeto/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                projeto_id: projetoId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Resposta da exclusão:', data);
+            if (data.success) {
+                alert(data.message || 'Projeto excluído com sucesso!');
+                location.reload();
+            } else {
+                alert('Erro ao excluir projeto: ' + (data.error || 'Erro desconhecido'));
+            }
+        })
+        .catch(error => {
+            console.error('Erro na requisição:', error);
+            alert('Erro ao excluir projeto: ' + error.message);
+        });
+    }
+}
+// Função para editar projeto - MELHORADA
+function editarProjeto(projetoId) {
+    console.log('Editando projeto:', projetoId);
+    
+    // Verificar se o modal existe
+    const modalElement = document.getElementById('modalEditarProjeto');
+    if (!modalElement) {
+        alert('Erro: Modal de edição não encontrado!');
+        return;
+    }
+    
+    fetch(`/api/projeto/${projetoId}/`)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Dados do projeto:', data);
+        if (data.success) {
+            preencherModalEdicao(data.projeto);
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        } else {
+            alert('Erro ao carregar projeto: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro na requisição:', error);
+        alert('Erro ao carregar projeto: ' + error.message);
+    });
+}
+// Função para carregar projetos rejeitados (CORRIGIDA)
+function carregarProjetosRejeitados() {
+    console.log('Carregando projetos rejeitados...');
+    
+    const container = document.getElementById('listaRejeitados');
+    
+    // Mostrar loading
+    container.innerHTML = `
+        <div class="text-center py-3">
+            <div class="spinner-border text-danger" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p class="mt-2 text-muted">Carregando projetos rejeitados...</p>
+        </div>
+    `;
+    
+    // Fazer requisição AJAX
+    fetch('/api/projetos-rejeitados/')
+        .then(response => {
+            console.log('API Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('API Response data:', data);
+            
+            if (data.success && data.projetos && data.projetos.length > 0) {
+                let html = '<div class="row">';
+                
+                data.projetos.forEach(projeto => {
+                    html += `
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-danger h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="card-title text-truncate" title="${projeto.nome}">
+                                            ${projeto.nome}
+                                        </h6>
+                                        <span class="badge bg-danger">Rejeitado</span>
+                                    </div>
+                                    
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            <i class="fas fa-user me-1"></i>${projeto.cliente}<br>
+                                            <i class="fas fa-calendar me-1"></i>Rejeitado em: ${projeto.data_aprovacao}<br>
+                                            <i class="fas fa-exclamation-triangle me-1"></i>Motivo: ${projeto.motivo_rejeicao}
+                                        </small>
+                                    </p>
+                                    
+                                    <div class="d-flex justify-content-between align-items-center mt-auto">
+                                        <span class="badge" style="background-color: ${projeto.status_cor};">
+                                            ${projeto.status_nome}
+                                        </span>
+                                        
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" 
+                                                    class="btn btn-outline-success btn-sm"
+                                                    onclick="reabrirProjetoRejeitado(${projeto.id})"
+                                                    title="Reabrir projeto">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                            
+                                            <button type="button" 
+                                                   class="btn btn-outline-info btn-sm"
+                                                   onclick="verDetalhes(${projeto.id})"
+                                                   title="Ver detalhes">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                
+                // Adicionar botão para ver todos
+                html += `
+                    <div class="text-center mt-3">
+                        <a href="/projetos-rejeitados/" class="btn btn-danger">
+                            <i class="fas fa-list me-2"></i>
+                            Ver Todos os Projetos Rejeitados
+                        </a>
+                    </div>
+                `;
+                
+                container.innerHTML = html;
+                
+            } else {
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
+                        <h6 class="text-muted">Nenhum projeto rejeitado!</h6>
+                        <p class="text-muted small">Todos os seus projetos estão aprovados ou pendentes.</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar projetos rejeitados:', error);
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Erro ao carregar projetos rejeitados. Tente novamente.
+                    <button class="btn btn-outline-danger btn-sm ms-2" onclick="carregarProjetosRejeitados()">
+                        <i class="fas fa-redo"></i> Tentar Novamente
+                    </button>
+                </div>
+            `;
+        });
+}
+// Função para reabrir projeto rejeitado
+function reabrirProjetoRejeitado(projetoId) {
+    if (confirm('Tem certeza que deseja reabrir este projeto? Ele voltará para o status "Pendente" no Kanban.')) {
+        fetch(`/projetos/${projetoId}/resetar-aprovacao/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Recarregar a página para atualizar o Kanban
+                location.reload();
+            } else {
+                alert('Erro ao reabrir projeto: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao reabrir projeto');
+        });
+    }
+}
+// Função para preencher modal de edição
+function preencherModalEdicao(projeto) {
+    console.log('Preenchendo modal de edição com:', projeto);
+    
+    // Verificar se todos os elementos existem
+    const elementos = {
+        'editProjetoId': document.getElementById('editProjetoId'),
+        'editNomeProjeto': document.getElementById('editNomeProjeto'),
+        'editClienteProjeto': document.getElementById('editClienteProjeto'),
+        'editPrazoEntrega': document.getElementById('editPrazoEntrega'),
+        'editPrazoPagamento': document.getElementById('editPrazoPagamento'),
+        'editStatusProjeto': document.getElementById('editStatusProjeto'),
+        'editObservacoesProjeto': document.getElementById('editObservacoesProjeto')
+    };
+    
+    // Verificar se algum elemento está faltando
+    for (const [nome, elemento] of Object.entries(elementos)) {
+        if (!elemento) {
+            console.error(`Elemento ${nome} não encontrado!`);
+            alert(`Erro: Elemento ${nome} não encontrado no modal de edição.`);
+            return;
+        }
+    }
+    
+    // Preencher os campos
+    elementos.editProjetoId.value = projeto.id;
+    elementos.editNomeProjeto.value = projeto.nome;
+    elementos.editClienteProjeto.value = projeto.cliente;
+    elementos.editPrazoEntrega.value = projeto.data_prazo_entrega;
+    elementos.editPrazoPagamento.value = projeto.data_prazo_pagamento;
+    elementos.editStatusProjeto.value = projeto.status_id;
+    elementos.editObservacoesProjeto.value = projeto.observacoes || '';
+    
+    console.log('Modal de edição preenchido com sucesso!');
+}
+// ========== FUNÇÕES PARA NOVO PROJETO ==========
+function abrirModalNovoProjeto() {
+    console.log('Abrindo modal de novo projeto...');
+    
+    // Verificar se o modal existe
+    const modalElement = document.getElementById('modalNovoProjeto');
+    if (!modalElement) {
+        alert('Erro: Modal de novo projeto não encontrado!');
+        return;
+    }
+    
+    // Limpar formulário
+    document.getElementById('formNovoProjeto').reset();
+    
+    // Limpar materiais extras (manter apenas o primeiro)
+    const materiaisContainer = document.getElementById('novoMateriaisProjeto');
+    const materiais = materiaisContainer.querySelectorAll('.material-item');
+    
+    // Remover todos exceto o primeiro
+    for (let i = 1; i < materiais.length; i++) {
+        materiais[i].remove();
+    }
+    
+    // Limpar o primeiro material
+    if (materiais.length > 0) {
+        materiais[0].querySelector('select[name="produto"]').value = '';
+        materiais[0].querySelector('input[name="quantidade"]').value = '';
+    }
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+}
+function salvarNovoProjeto() {
+    console.log('Salvando novo projeto...');
+    
+    // Coletar dados do formulário
+    const nome = document.getElementById('novoNomeProjeto').value.trim();
+    const cliente = document.getElementById('novoClienteProjeto').value.trim();
+    const prazoEntrega = document.getElementById('novoPrazoEntrega').value;
+    const prazoPagamento = document.getElementById('novoPrazoPagamento').value;
+    const statusId = document.getElementById('novoStatusProjeto').value;
+    const observacoes = document.getElementById('novoObservacoesProjeto').value.trim();
+    
+    // Validar campos obrigatórios
+    if (!nome) {
+        alert('Por favor, preencha o nome do projeto.');
+        document.getElementById('novoNomeProjeto').focus();
+        return;
+    }
+    
+    if (!cliente) {
+        alert('Por favor, preencha o nome do cliente.');
+        document.getElementById('novoClienteProjeto').focus();
+        return;
+    }
+    
+    if (!prazoEntrega) {
+        alert('Por favor, selecione o prazo de entrega.');
+        document.getElementById('novoPrazoEntrega').focus();
+        return;
+    }
+    
+    if (!prazoPagamento) {
+        alert('Por favor, selecione o prazo de pagamento.');
+        document.getElementById('novoPrazoPagamento').focus();
+        return;
+    }
+    
+    if (!statusId) {
+        alert('Por favor, selecione um status.');
+        document.getElementById('novoStatusProjeto').focus();
+        return;
+    }
+    
+    // Coletar materiais
+    const materiais = [];
+    const materiaisItems = document.querySelectorAll('#novoMateriaisProjeto .material-item');
+    
+    materiaisItems.forEach(item => {
+        const produtoId = item.querySelector('select[name="produto"]').value;
+        const quantidade = item.querySelector('input[name="quantidade"]').value;
+        
+        if (produtoId && quantidade && quantidade > 0) {
+            materiais.push({
+                produto_id: parseInt(produtoId),
+                quantidade: parseInt(quantidade)
+            });
+        }
+    });
+    
+    // Preparar dados para envio
+    const dadosProjeto = {
+        nome: nome,
+        cliente: cliente,
+        data_prazo_entrega: prazoEntrega,
+        data_prazo_pagamento: prazoPagamento,
+        status_id: parseInt(statusId),
+        observacoes: observacoes,
+        materiais: materiais
+    };
+    
+    console.log('Dados do projeto:', dadosProjeto);
+    
+    // Desabilitar botão para evitar duplo clique
+    const botaoSalvar = event.target;
+    botaoSalvar.disabled = true;
+    botaoSalvar.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvando...';
+    
+    // Enviar para API
+    fetch('/api/criar-projeto/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dadosProjeto)
+    })
+    .then(response => {
+        console.log('Status da resposta:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Resposta da API:', data);
+        if (data.success) {
+            alert(data.message || 'Projeto criado com sucesso!');
+            
+            // Fechar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovoProjeto'));
+            modal.hide();
+            
+            // Recarregar página
+            location.reload();
+        } else {
+            alert('Erro ao criar projeto: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro na requisição:', error);
+        alert('Erro ao criar projeto: ' + error.message);
+    })
+    .finally(() => {
+        // Reabilitar botão
+        botaoSalvar.disabled = false;
+        botaoSalvar.innerHTML = '<i class="fas fa-save me-1"></i>Criar Projeto';
+    });
+}
+function adicionarNovoMaterial() {
+    console.log('Adicionando novo material...');
+    
+    const container = document.getElementById('novoMateriaisProjeto');
+    const novoMaterial = document.createElement('div');
+    novoMaterial.className = 'row material-item mb-2';
+    novoMaterial.innerHTML = `
+        <div class="col-md-8">
+            <select class="form-control" name="produto">
+                <option value="">Selecione um produto</option>
+                {% for produto in produtos %}
+                <option value="{{ produto.id }}">{{ produto.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <input type="number" class="form-control" name="quantidade" placeholder="Qtd" min="1">
+        </div>
+        <div class="col-md-1">
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removerNovoMaterial(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(novoMaterial);
+}
+function removerNovoMaterial(botao) {
+    console.log('Removendo material...');
+    
+    const container = document.getElementById('novoMateriaisProjeto');
+    const materiais = container.querySelectorAll('.material-item');
+    
+    // Não permitir remover se for o último material
+    if (materiais.length > 1) {
+        botao.closest('.material-item').remove();
+    } else {
+        // Limpar o último material ao invés de remover
+        const item = botao.closest('.material-item');
+        item.querySelector('select[name="produto"]').value = '';
+        item.querySelector('input[name="quantidade"]').value = '';
+    }
+}
+// Função para preencher modal de detalhes
+function preencherModalDetalhes(projeto) {
+    console.log('Preenchendo modal de detalhes com:', projeto);
+    
+    // Verificar se todos os elementos existem
+    const elementos = {
+        'detalhesNome': document.getElementById('detalhesNome'),
+        'detalhesCliente': document.getElementById('detalhesCliente'),
+        'detalhesPrazoEntrega': document.getElementById('detalhesPrazoEntrega'),
+        'detalhesPrazoPagamento': document.getElementById('detalhesPrazoPagamento'),
+        'detalhesStatus': document.getElementById('detalhesStatus'),
+        'detalhesObservacoes': document.getElementById('detalhesObservacoes'),
+        'detalhesDataCriacao': document.getElementById('detalhesDataCriacao'),
+        'detalhesMateriais': document.getElementById('detalhesMateriais')
+    };
+    
+    // Verificar se algum elemento está faltando
+    for (const [nome, elemento] of Object.entries(elementos)) {
+        if (!elemento) {
+            console.error(`Elemento ${nome} não encontrado!`);
+            alert(`Erro: Elemento ${nome} não encontrado no modal de detalhes.`);
+            return;
+        }
+    }
+    
+    // Preencher os campos
+    elementos.detalhesNome.textContent = projeto.nome;
+    elementos.detalhesCliente.textContent = projeto.cliente;
+    elementos.detalhesPrazoEntrega.textContent = formatarData(projeto.data_prazo_entrega);
+    elementos.detalhesPrazoPagamento.textContent = formatarData(projeto.data_prazo_pagamento);
+    elementos.detalhesStatus.textContent = projeto.status_nome;
+    elementos.detalhesObservacoes.textContent = projeto.observacoes || 'Nenhuma observação';
+    elementos.detalhesDataCriacao.textContent = formatarDataHora(projeto.data_criacao);
+    
+    // Materiais
+    elementos.detalhesMateriais.innerHTML = '';
+    
+    if (projeto.materiais && projeto.materiais.length > 0) {
+        projeto.materiais.forEach(material => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            li.innerHTML = `
+                ${material.produto_nome}
+                <span class="badge bg-primary rounded-pill">${material.quantidade}</span>
+            `;
+            elementos.detalhesMateriais.appendChild(li);
+        });
+    } else {
+        elementos.detalhesMateriais.innerHTML = '<li class="list-group-item text-muted">Nenhum material cadastrado</li>';
+    }
+    
+    console.log('Modal de detalhes preenchido com sucesso!');
+}
+// Função para salvar edição
+function salvarEdicaoProjeto() {
+    const projetoId = document.getElementById('editProjetoId').value;
+    const nome = document.getElementById('editNomeProjeto').value;
+    const cliente = document.getElementById('editClienteProjeto').value;
+    const data_prazo_entrega = document.getElementById('editPrazoEntrega').value;
+    const data_prazo_pagamento = document.getElementById('editPrazoPagamento').value;
+    const status_id = document.getElementById('editStatusProjeto').value;
+    const observacoes = document.getElementById('editObservacoesProjeto').value;
+
+    if (!nome || !cliente || !data_prazo_entrega || !data_prazo_pagamento || !status_id) {
+        alert('Por favor, preencha todos os campos obrigatórios.');
+        return;
+    }
+fetch('/api/editar-projeto/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            projeto_id: projetoId,
+            nome: nome,
+            cliente: cliente,
+            data_prazo_entrega: data_prazo_entrega,
+            data_prazo_pagamento: data_prazo_pagamento,
+            status_id: status_id,
+            observacoes: observacoes
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Resposta da edição:', data);
+        if (data.success) {
+            alert(data.message || 'Projeto atualizado com sucesso!');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarProjeto'));
+            modal.hide();
+            location.reload();
+        } else {
+            alert('Erro ao atualizar projeto: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro na requisição:', error);
+        alert('Erro ao atualizar projeto: ' + error.message);
+    });
+}
+// Função para concluir projeto
+function concluirProjeto(projetoId) {
+    if (confirm('Tem certeza que deseja marcar este projeto como concluído? Ele será removido do Kanban.')) {
+        console.log('Concluindo projeto:', projetoId);
+        
+        fetch('/api/concluir-projeto/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                projeto_id: projetoId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Resposta da conclusão:', data);
+            if (data.success) {
+                alert(data.message || 'Projeto marcado como concluído!');
+                location.reload();
+            } else {
+                alert('Erro ao concluir projeto: ' + (data.error || 'Erro desconhecido'));
+            }
+        })
+        .catch(error => {
+            console.error('Erro na requisição:', error);
+            alert('Erro ao concluir projeto: ' + error.message);
+        });
+    }
+}
+// Função para carregar projetos concluídos
+function carregarProjetosConcluidos() {
+    console.log('Carregando projetos concluídos...');
+    
+    fetch('/api/projetos-concluidos/')
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Projetos concluídos:', data);
+        if (data.success) {
+            exibirProjetosConcluidos(data.projetos);
+        } else {
+            alert('Erro ao carregar projetos: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro na requisição:', error);
+        alert('Erro ao carregar projetos: ' + error.message);
+    });
+}
+// Função para exibir projetos concluídos
+function exibirProjetosConcluidos(projetos) {
+    const container = document.getElementById('listaConcluidos');
+    
+    if (projetos.length === 0) {
+        container.innerHTML = '<p class="text-muted">Nenhum projeto concluído encontrado.</p>';
+        return;
+    }
+    
+    let html = '<div class="row">';
+    
+    projetos.forEach(projeto => {
+        html += `
+        <div class="col-md-4 mb-3">
+            <div class="card border-success">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-check-circle text-success me-1"></i>
+                        ${projeto.nome}
+                    </h6>
+                    <p class="card-text small">
+                        <i class="fas fa-user me-1"></i>${projeto.cliente}
+                    </p>
+                    <p class="card-text small text-muted">
+                        <i class="fas fa-calendar-check me-1"></i>
+                        Concluído em: ${formatarDataHora(projeto.data_conclusao)}
+                    </p>
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-sm btn-outline-info" onclick="verDetalhes(${projeto.id})">
+                            <i class="fas fa-eye me-1"></i>Ver
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="reabrirProjeto(${projeto.id})">
+                            <i class="fas fa-undo me-1"></i>Reabrir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+// Função para reabrir projeto
+function reabrirProjeto(projetoId) {
+    if (confirm('Tem certeza que deseja reabrir este projeto? Ele voltará para o Kanban.')) {
+        console.log('Reabrindo projeto:', projetoId);
+        
+        fetch('/api/reabrir-projeto/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                projeto_id: projetoId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Resposta da reabertura:', data);
+            if (data.success) {
+                alert(data.message || 'Projeto reaberto com sucesso!');
+                location.reload();
+            } else {
+                alert('Erro ao reabrir projeto: ' + (data.error || 'Erro desconhecido'));
+            }
+        })
+        .catch(error => {
+            console.error('Erro na requisição:', error);
+            alert('Erro ao reabrir projeto: ' + error.message);
+        });
+    }
+}
+// ========== FUNÇÕES DE APROVAÇÃO CORRIGIDAS ==========
+// Função para aprovar projeto
+function aprovarProjeto(projetoId) {
+    console.log('Aprovando projeto:', projetoId);
+    
+    if (confirm('Tem certeza que deseja aprovar este projeto?')) {
+        fetch(`/projetos/${projetoId}/aprovar/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+            
+            if (data.success) {
+                showAlert('success', data.message);
+                location.reload();
+            } else {
+                showAlert('error', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showAlert('error', 'Erro ao aprovar projeto');
+        });
+    }
+}
+// Função para rejeitar projeto (CORRIGIDA)
+function rejeitarProjeto(projetoId) {
+    console.log('Rejeitando projeto:', projetoId);
+    
+    const motivo = prompt('Informe o motivo da rejeição (opcional):');
+    
+    // Se cancelou o prompt, não faz nada
+    if (motivo === null) return;
+    
+    if (confirm('Tem certeza que deseja rejeitar este projeto?')) {
+        fetch(`/projetos/${projetoId}/rejeitar/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                'motivo': motivo || 'Projeto rejeitado'
+            })
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+            
+            if (data.success) {
+                showAlert('success', data.message);
+                location.reload();
+            } else {
+                showAlert('error', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showAlert('error', 'Erro ao rejeitar projeto');
+        });
+    }
+}
+// Função para reabrir projeto rejeitado (CORRIGIDA)
+function reabrirProjetoRejeitado(projetoId) {
+    console.log('Reabrindo projeto rejeitado:', projetoId);
+    
+    if (confirm('Tem certeza que deseja reabrir este projeto?')) {
+        fetch(`/projetos/${projetoId}/resetar-aprovacao/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+            
+            if (data.success) {
+                showAlert('success', data.message);
+                location.reload();
+            } else {
+                showAlert('error', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showAlert('error', 'Erro ao reabrir projeto');
+        });
+    }
+}
+// Função para mostrar alertas
+function showAlert(type, message) {
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // Adicionar o alerta no topo da página
+    const container = document.querySelector('.container-fluid') || document.querySelector('.container');
+    if (container) {
+        container.insertAdjacentHTML('afterbegin', alertHtml);
+        
+        // Auto-remover após 5 segundos
+        setTimeout(() => {
+            const alert = container.querySelector('.alert');
+            if (alert) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+}
+// ========== FUNÇÕES DE FILTRO DE MÉTRICAS ==========
+// Função para aplicar filtro de métricas
+function aplicarFiltroMetricas() {
+    const dataInicio = document.getElementById('dataInicio').value;
+    const dataFim = document.getElementById('dataFim').value;
+    
+    console.log('Aplicando filtro:', dataInicio, 'até', dataFim);
+    
+    // Validar datas
+    if (dataInicio && dataFim && dataInicio > dataFim) {
+        alert('A data de início não pode ser maior que a data de fim.');
+        return;
+    }
+    
+    // Mostrar loading
+    mostrarLoadingMetricas();
+    
+    // Construir URL com parâmetros
+    let url = '/api/metricas-filtradas/?';
+    const params = new URLSearchParams();
+    
+    if (dataInicio) params.append('data_inicio', dataInicio);
+    if (dataFim) params.append('data_fim', dataFim);
+    
+    url += params.toString();
+    
+    // Fazer requisição
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Métricas filtradas:', data);
+            
+            if (data.success) {
+                atualizarMetricas(data.metricas);
+                mostrarIndicadorFiltro(dataInicio, dataFim);
+            } else {
+                alert('Erro ao filtrar métricas: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao filtrar métricas');
+        })
+        .finally(() => {
+            ocultarLoadingMetricas();
+        });
+}
+// Função para limpar filtro
+function limparFiltroMetricas() {
+    document.getElementById('dataInicio').value = '';
+    document.getElementById('dataFim').value = '';
+    document.getElementById('indicadorFiltro').style.display = 'none';
+    
+    // Recarregar página para voltar aos valores originais
+    location.reload();
+}
+// Função para aplicar períodos rápidos
+function aplicarPeriodoRapido(periodo) {
+    const hoje = new Date();
+    let dataInicio, dataFim;
+    
+    switch (periodo) {
+        case 'hoje':
+            dataInicio = dataFim = hoje.toISOString().split('T')[0];
+            break;
+            
+        case 'semana':
+            const inicioSemana = new Date(hoje);
+            inicioSemana.setDate(hoje.getDate() - hoje.getDay());
+            const fimSemana = new Date(inicioSemana);
+            fimSemana.setDate(inicioSemana.getDate() + 6);
+            
+            dataInicio = inicioSemana.toISOString().split('T')[0];
+            dataFim = fimSemana.toISOString().split('T')[0];
+            break;
+            
+        case 'mes':
+            const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+            
+            dataInicio = inicioMes.toISOString().split('T')[0];
+            dataFim = fimMes.toISOString().split('T')[0];
+            break;
+            
+        case 'trimestre':
+            const trimestre = Math.floor(hoje.getMonth() / 3);
+            const inicioTrimestre = new Date(hoje.getFullYear(), trimestre * 3, 1);
+            const fimTrimestre = new Date(hoje.getFullYear(), (trimestre + 1) * 3, 0);
+            
+            dataInicio = inicioTrimestre.toISOString().split('T')[0];
+            dataFim = fimTrimestre.toISOString().split('T')[0];
+            break;
+            
+        case 'ano':
+            const inicioAno = new Date(hoje.getFullYear(), 0, 1);
+            const fimAno = new Date(hoje.getFullYear(), 11, 31);
+            
+            dataInicio = inicioAno.toISOString().split('T')[0];
+            dataFim = fimAno.toISOString().split('T')[0];
+            break;
+    }
+    
+    // Definir valores nos campos
+    document.getElementById('dataInicio').value = dataInicio;
+    document.getElementById('dataFim').value = dataFim;
+    
+    // Aplicar filtro automaticamente
+    aplicarFiltroMetricas();
+}
+// Função para atualizar as métricas na tela
+function atualizarMetricas(metricas) {
+    // Atualizar métricas principais
+    document.getElementById('metrica-atraso').textContent = metricas.projetos_em_atraso;
+    document.getElementById('metrica-semana').textContent = metricas.projetos_semana;
+    document.getElementById('metrica-aceitos').textContent = metricas.orcamentos_aceitos;
+    document.getElementById('metrica-rejeitados').textContent = metricas.orcamentos_rejeitados;
+    document.getElementById('metrica-concluidos').textContent = metricas.projetos_concluidos;
+    
+    // Atualizar período da semana
+    document.getElementById('periodo-semana').textContent = metricas.periodo_texto;
+    
+    // Atualizar cards de aprovação
+    document.getElementById('card-aceitos').textContent = metricas.orcamentos_aceitos;
+    document.getElementById('card-rejeitados').textContent = metricas.orcamentos_rejeitados;
+    document.getElementById('percentual-aceitos').textContent = metricas.percentual_aceitos + '%';
+    document.getElementById('percentual-rejeitados').textContent = metricas.percentual_rejeitados + '%';
+    document.getElementById('total-orcamentos').textContent = `Total: ${metricas.total_orcamentos} orçamento${metricas.total_orcamentos !== 1 ? 's' : ''}`;
+    
+    // Atualizar resumo geral
+    document.getElementById('resumo-ativos').textContent = metricas.projetos_ativos;
+    document.getElementById('resumo-finalizados').textContent = metricas.projetos_concluidos;
+    document.getElementById('resumo-pendentes').textContent = metricas.projetos_pendentes;
+    
+    // Atualizar barra de progresso
+    atualizarBarraProgresso(metricas.orcamentos_aceitos, metricas.orcamentos_rejeitados);
+    
+    // Atualizar dropdown de status
+    atualizarDropdownStatus(metricas.status_metricas);
+    
+    // Atualizar indicador de performance
+    atualizarIndicadorPerformance(metricas.projetos_concluidos);
+}
+// Função para atualizar barra de progresso
+function atualizarBarraProgresso(aceitos, rejeitados) {
+    const container = document.getElementById('barra-progresso-container');
+    const total = aceitos + rejeitados;
+    
+    if (total > 0) {
+        const percentualAceitos = Math.round((aceitos / total) * 100);
+        const percentualRejeitados = Math.round((rejeitados / total) * 100);
+        
+        container.innerHTML = `
+            <div class="progress" style="height: 10px;">
+                <div class="progress-bar bg-success" role="progressbar" 
+                     style="width: ${percentualAceitos}%"
+                     title="Aceitos: ${aceitos}">
+                </div>
+                <div class="progress-bar bg-danger" role="progressbar" 
+                     style="width: ${percentualRejeitados}%"
+                     title="Rejeitados: ${rejeitados}">
+                </div>
+            </div>
+        `;
+    } else {
+        container.innerHTML = `
+            <div class="progress" style="height: 10px;">
+                <div class="progress-bar bg-secondary" role="progressbar" style="width: 100%"></div>
+            </div>
+        `;
+    }
+}
+// Função para atualizar dropdown de status
+function atualizarDropdownStatus(statusMetricas) {
+    const dropdown = document.getElementById('dropdown-status-metricas');
+    
+    dropdown.innerHTML = '';
+    
+    statusMetricas.forEach(status => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <a class="dropdown-item" href="#" onclick="alterarStatusMetrica(${status.id}, '${status.nome}', '${status.cor}', ${status.count})">
+                <span class="badge me-2" style="background-color: ${status.cor};">&nbsp;</span>
+                ${status.nome} 
+                <span class="badge bg-secondary ms-1">${status.count}</span>
+            </a>
+        `;
+        dropdown.appendChild(li);
+    });
+}
+// Função para atualizar indicador de performance
+function atualizarIndicadorPerformance(concluidos) {
+    const indicador = document.getElementById('indicador-performance');
+    
+    if (concluidos > 0) {
+        indicador.innerHTML = `
+            <small class="text-success">
+                <i class="fas fa-arrow-up me-1"></i>
+                ${concluidos} projeto${concluidos !== 1 ? 's' : ''} finalizado${concluidos !== 1 ? 's' : ''}
+            </small>
+        `;
+    } else {
+        indicador.innerHTML = `
+            <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Nenhum projeto finalizado
+            </small>
+        `;
+    }
+}
+// Função para mostrar indicador de filtro ativo
+function mostrarIndicadorFiltro(dataInicio, dataFim) {
+    const indicador = document.getElementById('indicadorFiltro');
+    const texto = document.getElementById('textoFiltro');
+    
+    let textoFiltro = 'Filtro ativo: ';
+    
+    if (dataInicio && dataFim) {
+        textoFiltro += `${dataInicio} até ${dataFim}`;
+    } else if (dataInicio) {
+        textoFiltro += `a partir de ${dataInicio}`;
+    } else if (dataFim) {
+        textoFiltro += `até ${dataFim}`;
+    }
+    
+    texto.textContent = textoFiltro;
+    indicador.style.display = 'block';
+}
+
+// Função para mostrar loading nas métricas
+function mostrarLoadingMetricas() {
+    const dashboard = document.getElementById('metricas-dashboard');
+    dashboard.style.opacity = '0.6';
+    dashboard.style.pointerEvents = 'none';
+}
+// Função para ocultar loading das métricas
+function ocultarLoadingMetricas() {
+    const dashboard = document.getElementById('metricas-dashboard');
+    dashboard.style.opacity = '1';
+    dashboard.style.pointerEvents = 'auto';
+}
+
+
+</script>
+<style>
+/* ==========================================================================
+   CSS AJUSTADO PARA CORRIGIR DROPDOWNS E MANTER ESTILOS EXISTENTES
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. CORREÇÃO DE Z-INDEX E OVERFLOW DOS DROPDOWNS
+   -------------------------------------------------------------------------- */
+/* Garante que elementos pais não cortem o conteúdo flutuante dos dropdowns */
+.row,
+.col-12, .col-md-2, .col-md-3, .col-md-4, .col-md-6, .col-md-8, .col-md-9,
+.kanban-column,   /* Coluna Kanban */
+.kanban-content,  /* O corpo onde os cartões de projeto ficam */
+.container-fluid, .container,
+.card { /* Adicionado .card aqui para garantir que o corte geral seja evitado */
+    overflow: visible !important;
+}
+
+/* Base styling for cards and project cards */
+.card {
+    position: relative; /* Essencial para que o z-index funcione e para posicionamento de filhos */
+    z-index: 1; /* Z-index base para todos os cards em estado normal */
+}
+
+/* O contêiner principal para cada projeto no Kanban */
+.projeto-card {
+    position: relative; /* Crucial para que o z-index funcione em relação aos irmãos */
+    z-index: 1; /* Z-index padrão para cartões de projeto não selecionados */
+    /* Transição suave para transform e box-shadow, e z-index imediato para evitar flicker */
+    transition: transform 0.2s ease, box-shadow 0.2s ease, z-index 0s step-end;
+}
+
+/* No hover, traga o cartão de projeto inteiro para a frente */
+.projeto-card:hover {
+    transform: scale(1.02); /* Mantém o efeito de escala existente */
+    /* Traga o cartão selecionado e seus filhos significativamente para a frente, criando um novo contexto de empilhamento */
+    z-index: 100;
+}
+
+/* Efeito de hover existente para o .card (o card interno) */
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    /* Não é necessário z-index aqui, pois o .projeto-card:hover já lida com trazer todo o elemento para a frente */
+}
+
+/* Dropdown do FILTRO DE DATAS (botão de calendário) */
+/* Mantido como estava, parece estar funcionando corretamente */
+.dropdown-filtro-periodos {
+    position: relative !important;
+    z-index: 999999 !important; /* Muito alto para ficar acima de tudo */
+}
+
+.dropdown-filtro-periodos .dropdown-toggle {
+    position: relative !important;
+    z-index: 999999 !important;
+}
+.dropdown-filtro-periodos .dropdown-menu {
+    position: absolute !important;
+    z-index: 1000000 !important; /* Mais alto que o botão */
+    background: white !important;
+    border: 1px solid #dee2e6 !important;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    border-radius: 0.375rem !important;
+    min-width: 180px !important;
+    right: 0 !important; /* Alinha o menu à direita do botão */
+    left: auto !important;
+    top: 100% !important; /* Posiciona o menu abaixo do botão */
+}
+
+/* Dropdown DENTRO DOS CARDS DE MÉTRICAS (botão de engrenagem) */
+.card .dropdown {
+    position: absolute !important; /* Permite posicionamento exato dentro do card */
+    top: 10px !important;
+    right: 10px !important;
+    z-index: 9999 !important; /* Alto o suficiente para sair do card */
+}
+
+.card .dropdown-toggle {
+    position: relative !important;
+    z-index: 999998 !important;
+    border: 1px solid rgba(255,255,255,0.3) !important;
+    background: rgba(255,255,255,0.1) !important;
+    backdrop-filter: blur(10px) !important;
+}
+.card .dropdown-menu {
+    position: absolute !important;
+    z-index: 999999 !important; /* Mais alto que o botão do dropdown */
+    background: white !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    border-radius: 8px !important;
+    overflow: hidden !important; /* Certifique-se de que o menu em si não esteja cortando seu conteúdo */
+    min-width: 200px !important;
+    right: 0 !important;
+    left: auto !important;
+}
+
+/* Dropdown DENTRO DOS CARDS DE PROJETOS NO KANBAN (botão de três pontos) */
+.projeto-card .dropdown {
+    position: relative !important; /* Garante que o menu flutue dentro do card do projeto */
+    /* Z-index não é estritamente necessário no botão do dropdown em si, o menu lida com isso */
+}
+
+.projeto-card .dropdown-menu {
+    position: absolute !important; /* Essencial para que ele flutue fora do fluxo do documento */
+    /* O z-index aqui será sobrescrito por .dropdown-menu.show quando ativo, o que é o correto */
+    font-size: 0.85rem;
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    /* Garanta que nenhuma 'transform' ou 'transition' conflitante seja aplicada aqui para sobrescrever o Popper.js */
+}
+
+/* Garante que qualquer menu dropdown do Bootstrap com a classe 'show' apareça acima de tudo */
+.dropdown-menu.show {
+    display: block !important;
+    /* Manter o valor alto existente, garantindo que esteja acima de modais/tooltips típicos do Bootstrap */
+    z-index: 1000001 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    /* Permitir que o Bootstrap gerencie o transform e transition para posicionamento */
+}
+
+/* --------------------------------------------------------------------------
+   2. ESTILOS EXISTENTES (COPIADOS DO SEU ARQUIVO HOME.HTML)
+   -------------------------------------------------------------------------- */
+
+/* Estilos para flags de aprovação */
+.projeto-card .position-absolute .badge {
+    font-size: 0.65rem !important;
+    padding: 0.25em 0.5em;
+    border-radius: 0.375rem;
+    font-weight: 500;
+}
+
+/* Ajustar padding do card body para acomodar a flag */
+.projeto-card .card-body {
+    padding-top: 2.2rem;
+}
+/* Responsividade para as métricas */
+@media (max-width: 768px) {
+    .row.mb-4 .col-md-2,
+    .row.mb-4 .col-md-3 {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Cards de métrica */
+.row.mb-4 .col-md-2 .card,
+.row.mb-4 .col-md-3 .card {
+    min-height: 140px;
+}
+
+.row.mb-4 .col-md-2 .card h4,
+.row.mb-4 .col-md-3 .card h4 {
+    font-size: 2rem;
+}
+
+/* Dropdown items genérico */
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #000;
+}
+
+.dropdown-item .badge {
+    font-size: 0.7rem;
+}
+
+/* Kanban styles */
+.kanban-board {
+    min-height: 600px;
+}
+
+.kanban-column {
+    margin-bottom: 20px;
+}
+
+.kanban-header {
+    padding: 10px 15px;
+    border-radius: 8px 8px 0 0;
+    margin-bottom: 10px;
+}
+
+.kanban-content {
+    min-height: 500px;
+    padding: 10px;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: background-color 0.3s ease;
+}
+.projeto-card {
+    cursor: move;
+    /* A transição do transform já está no .projeto-card:hover */
+}
+
+.projeto-card:hover .card {
+    border-color: #ffc107;
+}
+
+.projeto-card .card-body {
+    padding: 12px !important;
+}
+
+.projeto-card .card-title {
+    font-size: 0.95rem;
+    margin-bottom: 8px !important;
+}
+
+.projeto-card .card-text {
+    font-size: 0.85rem;
+    margin-bottom: 8px !important;
+}
+
+/* Transições suaves */
+#metricaStatusCount, #metricaStatusNome {
+    transition: opacity 0.3s ease;
+}
+/* Animação do dropdown genérico */
+/* Esta animação pode conflitar com Popper.js se houver transform na animação */
+/* Recomenda-se testar se ela ainda é necessária ou pode ser removida */
+.dropdown-menu {
+    animation: fadeIn 0.15s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+/* Responsividade mobile para dropdowns */
+@media (max-width: 768px) {
+    /* Ajuste de posição para dropdowns em cards em telas menores */
+    .card .dropdown {
+        top: 5px !important;
+        right: 5px !important;
+    }
+    
+    /* Largura mínima para dropdown de filtro em telas menores */
+    .dropdown-filtro-periodos .dropdown-menu {
+        min-width: 150px !important;
+    }
+}
+</style>
+
+{% endblock %}
