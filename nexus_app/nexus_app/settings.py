@@ -16,55 +16,41 @@ import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure-1yn%c*ft^c1_g=#9s50@g80f_u!&00#62c9k4v4roqfht)x=yu"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# === CONFIGURAÇÕES PARA BACK4APP ===
-# Detectar se está rodando no Back4App
-IS_BACK4APP = os.environ.get('BACK4APP_SUBDOMAIN_NAME') is not None
+# === CONFIGURAÇÕES FORÇADAS PARA BACK4APP ===
+ALLOWED_HOSTS = [
+    "nexusapp-e8bbi6nf.b4a.run",
+    "*.b4a.run",
+    "*.back4app.io",
+    "localhost",
+    "127.0.0.1",
+    "*",  # Temporário para garantir funcionamento
+]
 
-if IS_BACK4APP:
-    # Configurações para produção no Back4App
-    DEBUG = False
-    
-    ALLOWED_HOSTS = [
-        "nexusapp-e8bbi6nf.b4a.run",
-        "*.b4a.run",
-        "*.back4app.io",
-    ]
-    
-    # CSRF configurações para Back4App - URL CORRETA
-    CSRF_TRUSTED_ORIGINS = [
-        "https://nexusapp-e8bbi6nf.b4a.run",
-        "https://*.b4a.run",
-        "https://*.back4app.io",
-    ]
-    
-    # Configurações de segurança para produção
-    CSRF_COOKIE_SECURE = True
-    SESSION_COOKIE_SECURE = True
-    SECURE_SSL_REDIRECT = True
-    
-else:
-    # Configurações para desenvolvimento local
-    ALLOWED_HOSTS = ["*"]
-    
-    CSRF_TRUSTED_ORIGINS = [
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ]
-    
-    # Configurações de segurança para desenvolvimento
-    CSRF_COOKIE_SECURE = False
-    SESSION_COOKIE_SECURE = False
+# CSRF - Configuração forçada
+CSRF_TRUSTED_ORIGINS = [
+    "https://nexusapp-e8bbi6nf.b4a.run",
+    "https://*.b4a.run",
+    "https://*.back4app.io",
+    "http://nexusapp-e8bbi6nf.b4a.run",
+    "http://*.b4a.run",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "*",
+]
 
+# Configurações CSRF adicionais
+CSRF_COOKIE_SECURE = False  # Temporariamente False para debug
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_DOMAIN = None
 
 # Application definition
 INSTALLED_APPS = [
@@ -76,7 +62,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "produtos",
 ]
-
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -107,10 +92,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "nexus_app.wsgi.application"
 
-
 # Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -118,10 +100,7 @@ DATABASES = {
     }
 }
 
-
 # Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -137,37 +116,14 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
 LANGUAGE_CODE = "en-us"
-
 TIME_ZONE = "UTC"
-
 USE_I18N = True
-
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
+# Static files
 STATIC_URL = "static/"
 
 # Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-# === CONFIGURAÇÕES CSRF ADICIONAIS ===
-CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_USE_SESSIONS = False
-CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
-
-# Configurações adicionais de segurança para Back4App
-if IS_BACK4APP:
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'DENY'
