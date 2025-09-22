@@ -83,7 +83,7 @@ WSGI_APPLICATION = "nexus_app.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": "/data/db.sqlite3",  # Exemplo de volume persistente (confirme no Back4App)
+        "NAME": "nexus_app/db.sqlite3",  # Exemplo de volume persistente (confirme no Back4App)
     }
 }
 
