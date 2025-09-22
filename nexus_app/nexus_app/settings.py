@@ -33,16 +33,18 @@ IS_BACK4APP = os.environ.get('BACK4APP_SUBDOMAIN_NAME') is not None
 if IS_BACK4APP:
     # Configurações para produção no Back4App
     DEBUG = False
-    BACK4APP_SUBDOMAIN = os.environ.get('BACK4APP_SUBDOMAIN_NAME')
     
     ALLOWED_HOSTS = [
-        f"{BACK4APP_SUBDOMAIN}.back4app.io",
+        "nexusapp-e8bbi6nf.b4a.run",
+        "*.b4a.run",
         "*.back4app.io",
     ]
     
-    # CSRF configurações para Back4App
+    # CSRF configurações para Back4App - URL CORRETA
     CSRF_TRUSTED_ORIGINS = [
-        f"https://{BACK4APP_SUBDOMAIN}.back4app.io",
+        "https://nexusapp-e8bbi6nf.b4a.run",
+        "https://*.b4a.run",
+        "https://*.back4app.io",
     ]
     
     # Configurações de segurança para produção
@@ -162,22 +164,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_USE_SESSIONS = False
+CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
 
 # Configurações adicionais de segurança para Back4App
 if IS_BACK4APP:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
-
-
-# === SOLUÇÃO TEMPORÁRIA PARA CSRF ===
-# REMOVER APÓS RESOLVER O PROBLEMA
-CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
-
-# Para debug - apenas temporário
-if IS_BACK4APP:
-    CSRF_COOKIE_DOMAIN = None
-    CSRF_TRUSTED_ORIGINS.extend([
-        "https://*.back4app.io",
-        "http://*.back4app.io",
-    ])
