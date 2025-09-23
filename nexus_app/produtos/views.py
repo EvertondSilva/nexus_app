@@ -73,7 +73,7 @@ def home(request):
     
     # IMPORTANTE: Buscar apenas projetos não concluídos E não rejeitados
     projetos = Projeto.objects.filter(
-        usuario=request.user, 
+        #usuario=request.user, 
         concluido=False,
         aprovacao__in=['pendente', 'aprovado']  # EXCLUIR REJEITADOS
     ).order_by('-data_criacao')
@@ -106,11 +106,13 @@ def home(request):
     ).count()
     
     # 4. Total de projetos concluídos
-    projetos_concluidos = Projeto.objects.filter(usuario=request.user, concluido=True).count()
+    projetos_concluidos = Projeto.objects.filter(
+        #usuario=request.user, 
+        concluido=True).count()
     
     # 5. PROJETOS REJEITADOS - CONTAR SEPARADAMENTE
     projetos_rejeitados = Projeto.objects.filter(
-        usuario=request.user, 
+        #usuario=request.user, 
         aprovacao='rejeitado'
     ).count()
     
@@ -121,7 +123,7 @@ def home(request):
     
     # 7. Orçamentos aceitos (aprovados)
     orcamentos_aceitos = Projeto.objects.filter(
-        usuario=request.user,
+        #usuario=request.user,
         aprovacao='aprovado'
     ).count()
     
@@ -522,7 +524,7 @@ def criar_projeto(request):
             data_prazo_entrega=data_prazo_entrega,
             data_prazo_pagamento=data_prazo_pagamento,
             status=status,
-            usuario=request.user,
+            #usuario=request.user,
             observacoes=data.get("observacoes", ""),
         )
 
@@ -553,7 +555,7 @@ def criar_projeto(request):
 def projetos_rejeitados(request):
     """Lista projetos rejeitados"""
     projetos_rejeitados = Projeto.objects.filter(
-        usuario=request.user,
+        #usuario=request.user,
         aprovacao='rejeitado'
     ).order_by('-data_aprovacao')
     
@@ -724,8 +726,8 @@ def projetos_concluidos_api(request):
     """API para listar projetos concluídos"""
     try:
         projetos = Projeto.objects.filter(
-            usuario=request.user, concluido=True
-        ).order_by("-data_conclusao")
+            #usuario=request.user, 
+            concluido=True).order_by("-data_conclusao")
 
         projetos_data = []
         for projeto in projetos:
@@ -823,7 +825,7 @@ def projetos_rejeitados_api(request):
     """API para listar projetos rejeitados"""
     try:
         projetos = Projeto.objects.filter(
-            usuario=request.user, 
+            #usuario=request.user, 
             aprovacao='rejeitado'
         ).order_by('-data_aprovacao')
         
@@ -854,7 +856,7 @@ def api_projetos_rejeitados(request):
     """API para carregar projetos rejeitados via AJAX"""
     try:
         projetos_rejeitados = Projeto.objects.filter(
-            usuario=request.user,
+            #usuario=request.user,
             aprovacao='rejeitado'
         ).order_by('-data_aprovacao')[:6]  # Limitar a 6 projetos
         
