@@ -524,7 +524,7 @@ def criar_projeto(request):
             data_prazo_entrega=data_prazo_entrega,
             data_prazo_pagamento=data_prazo_pagamento,
             status=status,
-            #usuario=request.user,
+            usuario=request.user,
             observacoes=data.get("observacoes", ""),
         )
 
