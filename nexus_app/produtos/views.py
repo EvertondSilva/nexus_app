@@ -233,7 +233,9 @@ def mover_projeto(request):
         projeto_id = data.get("projeto_id")
         novo_status_id = data.get("novo_status_id")
 
-        projeto = get_object_or_404(Projeto, id=projeto_id, usuario=request.user)
+        projeto = get_object_or_404(Projeto, id=projeto_id, 
+        #usuario=request.user
+        )
         novo_status = get_object_or_404(StatusProjeto, id=novo_status_id)
 
         projeto.status = novo_status
@@ -258,7 +260,9 @@ def excluir_projeto(request):
                 {"success": False, "error": "ID do projeto é obrigatório"}
             )
 
-        projeto = get_object_or_404(Projeto, id=projeto_id, usuario=request.user)
+        projeto = get_object_or_404(Projeto, id=projeto_id, 
+        #usuario=request.user
+        )
         nome_projeto = projeto.nome
         projeto.delete()
 
@@ -277,7 +281,9 @@ def excluir_projeto(request):
 def projeto_detail_api(request, projeto_id):
     """API para buscar detalhes de um projeto"""
     try:
-        projeto = get_object_or_404(Projeto, id=projeto_id, usuario=request.user)
+        projeto = get_object_or_404(Projeto, id=projeto_id, 
+        #usuario=request.user
+        )
 
         # Buscar materiais
         materiais = []
@@ -571,7 +577,9 @@ def projetos_rejeitados(request):
 def projeto_detail_api(request, projeto_id):
     """API para buscar detalhes de um projeto"""
     try:
-        projeto = get_object_or_404(Projeto, id=projeto_id, usuario=request.user)
+        projeto = get_object_or_404(Projeto, id=projeto_id, 
+        #usuario=request.user
+        )
 
         # Buscar materiais
         materiais = []
@@ -623,7 +631,9 @@ def editar_projeto(request):
                 {"success": False, "error": "ID do projeto é obrigatório"}
             )
 
-        projeto = get_object_or_404(Projeto, id=projeto_id, usuario=request.user)
+        projeto = get_object_or_404(Projeto, id=projeto_id, 
+        #usuario=request.user
+        )
 
         # Validar campos obrigatórios
         nome = data.get("nome")
@@ -679,7 +689,9 @@ def concluir_projeto(request):
                 {"success": False, "error": "ID do projeto é obrigatório"}
             )
 
-        projeto = get_object_or_404(Projeto, id=projeto_id, usuario=request.user)
+        projeto = get_object_or_404(Projeto, id=projeto_id, 
+        #usuario=request.user
+        )
         projeto.marcar_como_concluido()
 
         return JsonResponse(
@@ -707,7 +719,9 @@ def reabrir_projeto(request):
                 {"success": False, "error": "ID do projeto é obrigatório"}
             )
 
-        projeto = get_object_or_404(Projeto, id=projeto_id, usuario=request.user)
+        projeto = get_object_or_404(Projeto, id=projeto_id, 
+        #usuario=request.user
+        )
         projeto.reabrir_projeto()
 
         return JsonResponse(
@@ -756,7 +770,9 @@ def projetos_concluidos_api(request):
 def aprovar_projeto(request, projeto_id):
     """Aprova um projeto"""
     try:
-        projeto = get_object_or_404(Projeto, id=projeto_id, usuario=request.user)
+        projeto = get_object_or_404(Projeto, id=projeto_id, 
+        #usuario=request.user
+        )
         projeto.aprovar_projeto()
         
         return JsonResponse({
@@ -779,7 +795,9 @@ def rejeitar_projeto(request, projeto_id):
     try:
         import json
         
-        projeto = get_object_or_404(Projeto, id=projeto_id, usuario=request.user)
+        projeto = get_object_or_404(Projeto, id=projeto_id, 
+        #usuario=request.user
+        )
         
         # Pegar motivo do corpo da requisição
         data = json.loads(request.body) if request.body else {}
@@ -805,7 +823,9 @@ def rejeitar_projeto(request, projeto_id):
 def resetar_aprovacao_projeto(request, projeto_id):
     """Reseta aprovação de um projeto para pendente"""
     try:
-        projeto = get_object_or_404(Projeto, id=projeto_id, usuario=request.user)
+        projeto = get_object_or_404(Projeto, id=projeto_id, 
+        #usuario=request.user
+        )
         projeto.resetar_aprovacao()
         
         return JsonResponse({
@@ -910,7 +930,9 @@ def api_metricas_filtradas(request):
             data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d').date()
         
         # Base query - projetos do usuário
-        projetos_base = Projeto.objects.filter(usuario=request.user)
+        projetos_base = Projeto.objects.filter(
+            #usuario=request.user
+            )
         
         # Aplicar filtros de data se fornecidos
         if data_inicio:
